@@ -41,6 +41,7 @@ BOT = "RISK_SURVIVAL"
 SEVERITY = {RiskMode.NORMAL: 0, RiskMode.FROZEN: 1, RiskMode.SURVIVAL: 2, RiskMode.LOCKDOWN: 3}
 CORR_REDUCE_PCT = 25.0
 CORR_COOLDOWN = timedelta(hours=4)
+TRIM_BUFFER = 0.99          # trims/reductions land 1% under the limit
 
 
 @dataclass
@@ -221,7 +222,8 @@ class RiskSurvival:
         for p in pf.positions:
             pct = abs(p.market_value) / eq * 100
             if pct > self.cfg.max_position_pct + 1e-9:
-                cut[p.symbol] = max(cut.get(p.symbol, 0), 1 - self.cfg.max_position_pct / pct)
+                # Trim to 1% under the cap so fill slippage can't leave it a hair over and cause a second micro-trim.
+                cut[p.symbol] = max(cut.get(p.symbol, 0), 1 - self.cfg.max_position_pct * TRIM_BUFFER / pct)
                 acts.append(RiskAction(rule="max_position", action="trim", symbol=p.symbol,
                                        detail=f"{p.symbol} is {pct:.2f}% of equity > {self.cfg.max_position_pct}%. Trim to cap.",
                                        metrics={"position_pct": round(pct, 3)}))
@@ -236,7 +238,7 @@ class RiskSurvival:
                 continue
             pct = sum(abs(p.market_value) for p in ps) / eq * 100
             if pct > cap + 1e-9:
-                f = 1 - cap / pct
+                f = 1 - cap * TRIM_BUFFER / pct
                 for p in ps:
                     cut[p.symbol] = max(cut.get(p.symbol, 0), f)
                 acts.append(RiskAction(rule="concentration", action="reduce",

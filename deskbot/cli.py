@@ -19,6 +19,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--synthetic", action="store_true", help="use synthetic market data (offline dry run)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run", help="run 24/7");  r.add_argument("--role", choices=["all", "core", "research"], default="all")
+    r.add_argument("--ui-port", type=int, default=0, help="also serve the dashboard on this port (0 = off)")
+    r.add_argument("--ui-host", default="127.0.0.1")
+    u = sub.add_parser("ui", help="serve the dashboard only (reads the shared database)")
+    u.add_argument("--port", type=int, default=8080); u.add_argument("--host", default="127.0.0.1")
     sub.add_parser("status", help="risk status + positions")
     sub.add_parser("brief", help="produce the Desk Lead brief now")
     sub.add_parser("scan", help="run Market Scout + Risk once")
@@ -50,7 +54,13 @@ def main(argv: list[str] | None = None) -> int:
         if not _confirm(f"Type YES to {args.cmd} (reason: {args.reason}): "):
             print("aborted"); return 1
     match args.cmd:
+        case "ui":
+            from .web import serve
+            serve(desk, args.host, args.port)
         case "run":
+            if args.ui_port:
+                from .web import serve
+                serve(desk, args.ui_host, args.ui_port, background=True)
             loop = asyncio.new_event_loop()
             loop.run_until_complete(desk.run(args.role))
             logging.shutdown()

@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trading Desk</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#14171c; --muted:#5d6673; --line:#e3e6eb;
+  --accent:#2f6bd8; --ok:#1f8a4c; --warn:#b7791f; --bad:#c2332b; --crit-bg:#fdecea; --warn-bg:#fdf6e7; --ok-bg:#e9f6ef;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0e1116; --panel:#161a21; --ink:#e7eaef; --muted:#97a0ad; --line:#262c36;
+  --accent:#6b9cff; --ok:#43c07a; --warn:#e0a63a; --bad:#ff6b5f; --crit-bg:#3a1714; --warn-bg:#33270f; --ok-bg:#12301f; } }
+:root[data-theme="dark"]{
+  --bg:#0e1116; --panel:#161a21; --ink:#e7eaef; --muted:#97a0ad; --line:#262c36;
+  --accent:#6b9cff; --ok:#43c07a; --warn:#e0a63a; --bad:#ff6b5f; --crit-bg:#3a1714; --warn-bg:#33270f; --ok-bg:#12301f; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:2}
+h1{font-size:17px;margin:0;letter-spacing:.2px}
+.sub{color:var(--muted);font-size:12px}
+main{max-width:1400px;margin:0 auto;padding:16px 20px 40px;display:grid;gap:16px}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(12,1fr)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:0 0 10px;font-weight:600;display:flex;flex-wrap:wrap;gap:6px;justify-content:space-between;align-items:center}
+.card h2 .sub{text-transform:none;letter-spacing:0;font-weight:400;overflow-wrap:anywhere}
+.grid>*,.kpis>*{min-width:0}
+table{table-layout:auto}td{overflow-wrap:anywhere}
+.s12{grid-column:span 12}.s8{grid-column:span 8}.s6{grid-column:span 6}.s4{grid-column:span 4}
+@media (max-width:1000px){.s8,.s6,.s4{grid-column:span 12}}
+.badge{display:inline-block;padding:3px 10px;border-radius:999px;font-weight:700;font-size:12px;letter-spacing:.5px}
+.m-normal{background:var(--ok-bg);color:var(--ok)}.m-frozen{background:var(--warn-bg);color:var(--warn)}
+.m-survival,.m-lockdown{background:var(--crit-bg);color:var(--bad)}
+.pill{font-size:11px;padding:2px 7px;border-radius:6px;border:1px solid var(--line);color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.kpi .l{font-size:12px;color:var(--muted)}.kpi .v{font-size:22px;font-weight:650;font-variant-numeric:tabular-nums;margin-top:2px}
+.meter{height:6px;background:var(--line);border-radius:4px;margin-top:8px;overflow:hidden}.meter>i{display:block;height:100%;background:var(--ok)}
+.kpi .h{font-size:11px;color:var(--muted);margin-top:4px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+td.n,th.n{text-align:right}
+.up{color:var(--ok)}.down{color:var(--bad)}
+.wl{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.tile{border:1px solid var(--line);border-radius:8px;padding:9px 10px}
+.tile .sym{font-weight:650}.tile .px{font-variant-numeric:tabular-nums}
+.tile svg{width:100%;height:30px;display:block;margin-top:4px}
+.feed{list-style:none;margin:0;padding:0;max-height:360px;overflow:auto}
+.feed li{padding:8px 0;border-bottom:1px solid var(--line)}
+.feed .meta{font-size:11px;color:var(--muted);margin-top:2px;word-break:break-word}
+.sev{font-size:10px;font-weight:700;text-transform:uppercase;padding:1px 6px;border-radius:4px;margin-right:6px}
+.sev-critical{background:var(--crit-bg);color:var(--bad)}.sev-warn{background:var(--warn-bg);color:var(--warn)}.sev-info{background:var(--line);color:var(--muted)}
+button{font:inherit;font-size:12px;padding:5px 11px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.danger{color:var(--bad)}
+.empty{color:var(--muted);font-size:13px;padding:6px 0}
+pre{white-space:pre-wrap;font:12px/1.5 var(--mono);margin:0;max-height:520px;overflow:auto}
+.hb{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.hb div{font-size:12px;display:flex;gap:6px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}.dot.ok{background:var(--ok)}.dot.bad{background:var(--bad)}
+.foot{color:var(--muted);font-size:12px;text-align:center;font-style:italic}
+#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:8px;font-size:13px;max-width:90vw;display:none;white-space:pre-wrap}
+.tick{font:12px/1.4 var(--mono)}
+@media (max-width:600px){header,main{padding-left:16px;padding-right:16px}}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Trading Desk</h1>
+    <div class="sub" id="sub">connecting…</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <span class="pill" id="envpill">—</span>
+    <span class="badge" id="mode">—</span>
+  </div>
+</header>
+<main>
+  <section class="kpis" id="kpis"></section>
+
+  <div class="grid">
+    <div class="card s8"><h2>Watchlist <span class="sub" id="regime"></span></h2><div class="wl" id="wl"></div></div>
+    <div class="card s4"><h2>Awaiting your approval</h2><div id="staged"></div></div>
+  </div>
+
+  <div class="grid">
+    <div class="card s6"><h2>Open positions</h2><div id="positions"></div></div>
+    <div class="card s6"><h2>Research ideas</h2><div id="ideas"></div></div>
+  </div>
+
+  <div class="grid">
+    <div class="card s4"><h2>Market Scout</h2><ul class="feed" id="signals"></ul></div>
+    <div class="card s4"><h2>News &amp; Narrative</h2><ul class="feed" id="news"></ul></div>
+    <div class="card s4"><h2>Risk &amp; Survival log</h2><ul class="feed" id="riskLog"></ul></div>
+  </div>
+
+  <div class="grid">
+    <div class="card s8"><h2>Desk Lead brief <button id="briefBtn">Generate now</button></h2><pre id="brief"></pre></div>
+    <div class="card s4"><h2>Bot health</h2><div class="hb" id="hb"></div>
+      <h2 style="margin-top:16px">Recent tickets</h2><div id="tickets"></div></div>
+  </div>
+
+  <p class="foot">I research and brief. You make every final decision.</p>
+</main>
+<div id="toast"></div>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = (n, d=2) => n == null ? "—" : Number(n).toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});
+const qty = n => Math.abs(n) >= 100 ? fmt(n,2) : Number(n).toPrecision(6).replace(/\.?0+$/,"");
+const px = n => n == null ? "—" : (Math.abs(n) >= 100 ? fmt(n,2) : fmt(n,4));
+const ago = iso => { if(!iso) return "never"; const s=(Date.now()-new Date(iso))/1000;
+  return s<60?`${s|0}s ago`:s<3600?`${(s/60)|0}m ago`:s<86400?`${(s/3600)|0}h ago`:`${(s/86400)|0}d ago`; };
+const tstr = iso => iso ? new Date(iso).toISOString().slice(5,16).replace("T"," ")+"Z" : "";
+
+function token(){ try{ return localStorage.getItem("deskToken") || ""; }catch(e){ return ""; } }
+async function post(url){
+  let r = await fetch(url,{method:"POST",headers:{"X-Desk-Token":token()}});
+  if (r.status === 401){
+    const t = prompt("Dashboard token (DESK_UI_TOKEN):"); if(!t) return null;
+    try{ localStorage.setItem("deskToken", t); }catch(e){}
+    r = await fetch(url,{method:"POST",headers:{"X-Desk-Token":t}});
+  }
+  return r.json();
+}
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.style.display="block"; clearTimeout(toast.h); toast.h=setTimeout(()=>t.style.display="none",6000); }
+
+function spark(vals){
+  if(!vals || vals.length<2) return "";
+  const mn=Math.min(...vals), mx=Math.max(...vals), w=100, h=30, r=(mx-mn)||1;
+  const pts=vals.map((v,i)=>`${(i/(vals.length-1)*w).toFixed(1)},${(h-2-(v-mn)/r*(h-4)).toFixed(1)}`).join(" ");
+  const col = vals[vals.length-1]>=vals[0] ? "var(--ok)" : "var(--bad)";
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline fill="none" stroke="${col}" stroke-width="1.5" vector-effect="non-scaling-stroke" points="${pts}"/></svg>`;
+}
+function meter(val, limit){
+  const p=Math.max(0,Math.min(100, val/limit*100));
+  const c = p>=80 ? "var(--bad)" : p>=50 ? "var(--warn)" : "var(--ok)";
+  return `<div class="meter"><i style="width:${p}%;background:${c}"></i></div>`;
+}
+
+function render(d){
+  const r = d.risk;
+  $("mode").textContent = r.mode.toUpperCase();
+  $("mode").className = "badge m-" + r.mode;
+  $("envpill").textContent = `${d.mode.toUpperCase()}${d.mode==="live" && !d.live_enabled ? " (send disabled)" : ""} · LLM ${d.llm?"on":"off"}`;
+  $("sub").textContent = `Updated ${new Date().toLocaleTimeString()} · risk engine ${ago(d.heartbeats.risk_engine)}`;
+  const dd=r.drawdown_pct, dpl=Math.abs(r.daily_pnl_pct)<0.005?0:r.daily_pnl_pct, dl=Math.max(0,-dpl);
+  $("kpis").innerHTML = `
+    <div class="kpi"><div class="l">Equity</div><div class="v">${fmt(r.equity)}</div><div class="h">HWM ${fmt(r.high_water_mark)}</div></div>
+    <div class="kpi"><div class="l">Drawdown from peak</div><div class="v">${fmt(dd)}%</div>${meter(dd,r.limits.max_drawdown_pct)}<div class="h">LOCKDOWN at ${r.limits.max_drawdown_pct}%</div></div>
+    <div class="kpi"><div class="l">Today</div><div class="v ${dpl<0?"down":dpl>0?"up":""}">${dpl>0?"+":""}${fmt(dpl)}%</div>${meter(dl,r.limits.max_daily_loss_pct)}<div class="h">FREEZE at −${r.limits.max_daily_loss_pct}%</div></div>
+    <div class="kpi"><div class="l">Gross exposure</div><div class="v">${fmt(r.gross_exposure_pct,1)}%</div><div class="h">${r.positions.length} position(s) · cap ${r.limits.max_position_pct}% each</div></div>
+    <div class="kpi"><div class="l">Regime</div><div class="v" style="font-size:18px">${esc(d.regime.name).replace("_","-")}</div><div class="h">${r.survival_reason?esc(r.survival_reason):"score "+(d.regime.detail.score ?? "—")}</div></div>`;
+  $("regime").textContent = Object.entries(d.regime.detail).filter(([k])=>k!=="score").map(([k,v])=>`${k} ${v}`).join(" · ");
+
+  $("wl").innerHTML = d.prices.map(p => p.price==null
+    ? `<div class="tile"><div class="sym">${esc(p.symbol)}</div><div class="sub">no data</div></div>`
+    : `<div class="tile" title="${esc(p.source)} · ${tstr(p.ts)}"><div style="display:flex;justify-content:space-between"><span class="sym">${esc(p.symbol)}</span><span class="${p.chg_24h>=0?"up":"down"}">${p.chg_24h>=0?"+":""}${fmt(p.chg_24h)}%</span></div>
+       <div class="px">${px(p.price)}</div>${spark(p.spark)}</div>`).join("");
+
+  const staged = d.tickets.filter(t=>t.status==="staged");
+  $("staged").innerHTML = staged.length ? staged.map(t=>`
+    <div style="border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(t.id)}</b><span class="pill">${t.origin==="risk_survival"?"RISK RECOMMENDATION":"trade"}</span></div>
+      <div class="tick" style="margin:6px 0">${esc(t.side.toUpperCase())} ${qty(t.quantity)} ${esc(t.symbol)} · ${esc(t.order_type)} ${t.limit_price??""}${t.stop_loss?` · stop ${t.stop_loss}`:""}${t.take_profit.length?` · TP ${t.take_profit.join("/")}`:""}</div>
+      <div class="sub">${esc(t.sizing_calc)}</div><div class="sub">Risk: ${esc(t.note)}</div>
+      <div style="display:flex;gap:6px;margin-top:8px"><button class="primary" data-approve="${esc(t.id)}">Approve &amp; send</button><button class="danger" data-reject="${esc(t.id)}">Reject</button></div>
+    </div>`).join("") : `<div class="empty">Nothing waiting. New-risk tickets appear here only after you prepare one from an idea.</div>`;
+
+  $("positions").innerHTML = r.positions.length ? `<table><tr><th>Symbol</th><th class="n">Qty</th><th class="n">Value</th><th class="n">% eq</th><th class="n">uPnL</th></tr>${
+    r.positions.map(p=>`<tr><td>${esc(p.symbol)}</td><td class="n">${qty(p.qty)}</td><td class="n">${fmt(p.value)}</td><td class="n">${fmt(p.pct_equity)}</td><td class="n ${p.unrealized>=0?"up":"down"}">${fmt(p.unrealized)}</td></tr>`).join("")}</table>`
+    : `<div class="empty">Flat — no open positions.</div>`;
+
+  $("ideas").innerHTML = d.ideas.length ? d.ideas.slice(0,6).map(i=>`
+    <div style="border-bottom:1px solid var(--line);padding:8px 0">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span><b>${esc(i.direction.toUpperCase())} ${esc(i.symbol)}</b> <span class="sub">${esc(i.id)} · conv ${fmt(i.conviction)} · ${esc(i.horizon)}</span></span><button data-prepare="${esc(i.id)}">Prepare ticket</button></div>
+      <div>${esc(i.thesis)}</div>
+      <div class="tick sub">entry ${i.entry_low}–${i.entry_high} · stop ${i.stop} · tgt ${i.targets.join("/")} · size ${i.size_pct}%</div>
+      <div class="sub">Risks: ${esc(i.key_risks.join("; "))}</div></div>`).join("")
+    : `<div class="empty">No ideas. ${d.llm?"":"Research Analyst needs ANTHROPIC_API_KEY. "}${d.edge?"Edge: "+esc(d.edge):""}</div>`;
+
+  $("signals").innerHTML = d.signals.length ? d.signals.map(s=>`<li><span class="sev sev-${s.severity}">${s.severity}</span>${esc(s.summary)}
+    <div class="meta">${esc(s.kind)} · data ${tstr(s.data_ts)} · seen ${ago(s.observed_at)} · ${s.source_url?`<a href="${esc(s.source_url)}" target="_blank" rel="noopener">${esc(s.source)}</a>`:esc(s.source)}</div></li>`).join("")
+    : `<li class="empty">No unusual activity flagged.</li>`;
+
+  $("news").innerHTML = d.news.length ? d.news.map(n=>`<li><span class="sev sev-${n.severity}">${n.severity}</span><b>${esc(n.headline)}</b>
+    <div>${esc(n.why_it_matters)}</div>
+    <div class="meta">${esc(n.assets.join(", "))} · ${ago(n.observed_at)} · ${n.source_url?`<a href="${esc(n.source_url)}" target="_blank" rel="noopener">${esc(n.source)}</a>`:esc(n.source)}</div></li>`).join("")
+    : `<li class="empty">No relevant catalysts yet.</li>`;
+
+  $("riskLog").innerHTML = d.risk_actions.length ? d.risk_actions.map(a=>{
+    const sev = ["flatten_all","enter_survival","freeze","recommend"].includes(a.action)?"critical":["trim","reduce","alert","veto"].includes(a.action)?"warn":"info";
+    return `<li><span class="sev sev-${sev}">${esc(a.action)}</span>${esc(a.detail)}<div class="meta">${esc(a.rule)} · ${tstr(a.ts)}${a.executed?" · executed":""}</div></li>`}).join("")
+    : `<li class="empty">No rule has fired.</li>`;
+
+  if (d.brief && !$("brief").dataset.manual) $("brief").textContent = d.brief;
+  if (!$("brief").textContent) $("brief").textContent = "No brief yet — it runs daily at the configured time, or click Generate now.";
+
+  const stale = {risk_engine:120, risk_survival:120, market_scout:300, news_narrative:600, research_analyst:3600, desk_lead:300, watchdog:300};
+  $("hb").innerHTML = Object.entries(d.heartbeats).map(([k,v])=>{
+    const ok = v && (Date.now()-new Date(v))/1000 < (stale[k]||600);
+    return `<div title="${esc(v||"never")}"><span class="dot ${v?(ok?"ok":"bad"):""}"></span>${esc(k.replace(/_/g," "))} <span class="sub">${ago(v)}</span></div>`}).join("");
+
+  const recent = d.tickets.filter(t=>t.status!=="staged").slice(0,8);
+  $("tickets").innerHTML = recent.length ? `<table>${recent.map(t=>`<tr><td class="tick">${esc(t.id)}</td><td>${esc(t.side)} ${esc(t.symbol)}</td><td><span class="pill">${esc(t.status)}</span></td></tr>`).join("")}</table>` : `<div class="empty">None yet.</div>`;
+}
+
+async function refresh(){
+  try{ const r = await fetch("/api/state"); render(await r.json()); }
+  catch(e){ $("sub").textContent = "Disconnected — is the desk running?"; }
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("button"); if(!b) return;
+  if (b.dataset.approve){
+    if(!confirm(`Approve and SEND ${b.dataset.approve}?\nRisk & Survival re-checks it before sending.`)) return;
+    const r = await post(`/api/tickets/${b.dataset.approve}/approve`); if(r) toast((r.ok?"Sent: ":"Not sent: ")+r.message);
+  } else if (b.dataset.reject){
+    const r = await post(`/api/tickets/${b.dataset.reject}/reject`); if(r) toast(r.message);
+  } else if (b.dataset.prepare){
+    const r = await post(`/api/ideas/${b.dataset.prepare}/prepare`); if(r) toast(r.message);
+  } else if (b.id === "briefBtn"){
+    b.disabled = true; b.textContent = "Working…";
+    const r = await post("/api/brief"); b.disabled=false; b.textContent="Generate now";
+    if(r){ $("brief").textContent = r.brief; $("brief").dataset.manual = "1"; }
+  }
+  refresh();
+});
+refresh(); setInterval(refresh, 5000);
+</script>
+</body>
+</html>

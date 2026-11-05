@@ -5,8 +5,9 @@
 services:
   core:
     build: .
-    command: ["run", "--role", "core"]
+    command: ["run", "--role", "core", "--ui-port", "8080", "--ui-host", "0.0.0.0"]
     env_file: .env
+    ports: ["127.0.0.1:8080:8080"]   # dashboard reachable only from the host machine
     volumes: [desk-data:/app/var, ./config:/app/config:ro]
     restart: always
     healthcheck:

@@ -44,6 +44,19 @@ python -m deskbot.cli run                   # everything, 24/7 (paper)
 docker compose up -d --build
 ```
 
+## Dashboard (localhost)
+
+```bash
+python -m deskbot.cli run --ui-port 8080      # desk + dashboard → http://127.0.0.1:8080
+python -m deskbot.cli ui                      # dashboard only, against the shared database
+```
+
+It shows the risk mode, equity, drawdown and daily-loss meters, the watchlist with sparklines, every bot's feed,
+the risk log, bot heartbeats and the brief. You can **prepare / approve / reject** tickets from it. Risk overrides
+(`override-freeze`, `clear-survival`, `rearm`) are CLI-only on purpose. The dashboard binds to 127.0.0.1. Set
+`DESK_UI_TOKEN` to require a token for the buttons; do that before exposing it beyond your own machine.
+With Docker it's published only on the host's loopback: `127.0.0.1:8080`.
+
 ## Daily commands
 
 ```
