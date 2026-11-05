@@ -1,0 +1,26 @@
+# 24/7 deployment. Two processes share one SQLite volume:
+#   core     = Market Scout + Risk & Survival (+ watchdog). Never depends on the LLM.
+#   research = News & Narrative + Research Analyst + Desk Lead.
+# A hang or crash in research can't stop risk monitoring; each also watches the other's heartbeat.
+services:
+  core:
+    build: .
+    command: ["run", "--role", "core"]
+    env_file: .env
+    volumes: [desk-data:/app/var, ./config:/app/config:ro]
+    restart: always
+    healthcheck:
+      test: ["CMD", "python", "-m", "deskbot.cli", "health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+  research:
+    build: .
+    command: ["run", "--role", "research"]
+    env_file: .env
+    volumes: [desk-data:/app/var, ./config:/app/config:ro]
+    restart: always
+    depends_on: [core]
+volumes:
+  desk-data:

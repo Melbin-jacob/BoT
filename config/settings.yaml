@@ -1,0 +1,112 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Trading Desk configuration. Everything tunable lives here.
+# Values marked  # ASK  are defaults I picked that you still need to confirm.
+# ─────────────────────────────────────────────────────────────────────────────
+
+mode: paper              # paper | live   (live requires execution.live_enabled: true as well)
+base_currency: USD       # ASK
+timezone: America/Toronto   # ASK – used for the "daily" loss window and the morning brief
+db_path: var/desk.sqlite
+
+# ── Watchlist ────────────────────────────────────────────────────────────────
+# symbol: our internal name. provider: which data adapter. ref: provider's ticker.
+# asset_class drives concentration limits.  Add assets here (or `desk add-asset`).
+watchlist:
+  - {symbol: BTC,    asset_class: crypto,    provider: binance, ref: BTCUSDT, perp: true}
+  - {symbol: ETH,    asset_class: crypto,    provider: binance, ref: ETHUSDT, perp: true}
+  - {symbol: SOL,    asset_class: crypto,    provider: binance, ref: SOLUSDT, perp: true}
+  - {symbol: XRP,    asset_class: crypto,    provider: binance, ref: XRPUSDT, perp: true}
+  - {symbol: GOLD,   asset_class: commodity, provider: yahoo,   ref: "GC=F"}
+  - {symbol: SILVER, asset_class: commodity, provider: yahoo,   ref: "SI=F"}
+  - {symbol: OIL,    asset_class: commodity, provider: yahoo,   ref: "CL=F"}
+  - {symbol: EURUSD, asset_class: fx,        provider: yahoo,   ref: "EURUSD=X"}
+  - {symbol: GBPUSD, asset_class: fx,        provider: yahoo,   ref: "GBPUSD=X"}
+  - {symbol: USDJPY, asset_class: fx,        provider: yahoo,   ref: "JPY=X"}
+  - {symbol: SPX,    asset_class: index,     provider: yahoo,   ref: "^GSPC"}
+  - {symbol: NDX,    asset_class: index,     provider: yahoo,   ref: "^NDX"}
+
+# ── Bot schedules (seconds) ──────────────────────────────────────────────────
+schedule:
+  risk_survival: 15        # fastest loop – always runs first
+  market_scout: 60
+  news_narrative: 120
+  research_analyst: 900
+  desk_lead_brief_time: "07:30"   # ASK – local time, daily
+  heartbeat_stale_after: 120      # watchdog alarm if risk loop silent this long
+
+# ── Market Scout thresholds ──────────────────────────────────────────────────
+scout:
+  bar_interval: 15m
+  lookback_bars: 200
+  volume_z: 3.0               # volume spike vs rolling mean/std
+  return_z: 3.0               # price spike (single-bar return z-score)
+  breakout_lookback: 96       # bars defining the "key level" range (96×15m = 24h)
+  funding_extreme_abs: 0.0005 # 0.05% per 8h funding, either side
+  corr_window: 96
+  corr_shift: 0.5             # |Δ corr| between consecutive windows to flag
+  regime_vol_mult: 2.0        # short-window vol / long-window vol
+  dedupe_minutes: 60          # don't re-flag the same signal type/asset within this
+
+# ── News & Narrative ─────────────────────────────────────────────────────────
+news:
+  rss_feeds:                  # ASK – add/remove; primary sources preferred
+    - {name: Federal Reserve press,   url: "https://www.federalreserve.gov/feeds/press_all.xml"}
+    - {name: ECB press,               url: "https://www.ecb.europa.eu/rss/press.html"}
+    - {name: BLS releases,            url: "https://www.bls.gov/feed/bls_latest.rss"}
+    - {name: SEC press,               url: "https://www.sec.gov/news/pressreleases.rss"}
+    - {name: CoinDesk,                url: "https://www.coindesk.com/arc/outboundfeeds/rss/"}
+    - {name: EIA (oil),               url: "https://www.eia.gov/rss/todayinenergy.xml"}
+  x_accounts: []              # ASK – needs X API access (paid). Empty = disabled.
+  min_relevance: 0.5          # LLM triage score 0–1 to keep an item
+  shock_keywords: [emergency, halt, default, invasion, sanction, "circuit breaker", hack, exploit, depeg, insolvency]
+
+# ── Research Analyst ─────────────────────────────────────────────────────────
+research:
+  min_conviction: 0.7         # ideas below this are discarded ("be honest when edge is weak")
+  risk_per_trade_pct: 0.5     # ASK – % of equity lost if stop is hit; drives position size
+  max_ideas_per_run: 3
+
+# ── Risk & Survival (deterministic, no LLM) ──────────────────────────────────
+risk:
+  max_drawdown_pct: 5.0       # from equity high-water mark → LOCKDOWN (flatten + freeze)
+  max_daily_loss_pct: 2.5     # vs equity at start of day → FROZEN until next day / override
+  max_position_pct: 8.0       # single position cap → trim back to this
+  max_asset_class_pct:        # ASK – concentration caps (gross exposure % of equity)
+    crypto: 25.0
+    commodity: 30.0
+    fx: 40.0
+    index: 40.0
+    equity: 40.0
+  max_gross_exposure_pct: 100.0      # ASK – no leverage by default
+  max_avg_correlation: 0.80          # avg pairwise corr of held positions…
+  correlation_min_gross_pct: 20.0    # …only enforced when gross exposure is above this
+  survival:
+    reduce_pct: 70            # 70–100. Cut gross exposure by this much on trigger.
+    vol_spike_mult: 3.0       # any held asset or SPX short-vol / long-vol above this
+    consecutive_losses: 3     # ASK – this many losing closed trades in a row
+    news_shock: true          # News bot "critical" item triggers Survival
+    min_duration_hours: 24    # ASK – stays active at least this long; then only YOU can clear it
+  auto_reduce:
+    paper: true               # paper mode: the risk bot actually flattens/trims
+    live: false               # live mode: recommend + block only (your spec). Set true to auto-execute reductions.
+
+# ── Execution ────────────────────────────────────────────────────────────────
+execution:
+  broker: paper               # paper | (later: ibkr, oanda, binance, coinbase, …)  ASK
+  live_enabled: false         # must be changed by you, in writing, to go live
+  ticket_ttl_minutes: 60      # unapproved tickets expire
+  max_slippage_pct: 0.3
+  paper_starting_equity: 100000
+
+# ── LLM ──────────────────────────────────────────────────────────────────────
+llm:
+  enabled: true               # bots fall back to rule-based output if no API key
+  model: claude-opus-5-5
+  effort: medium
+  monthly_budget_usd: 200     # ASK – soft cap; LLM calls stop when reached
+
+# ── Notifications ────────────────────────────────────────────────────────────
+notify:
+  console: true
+  file: var/alerts.log
+  telegram: true              # uses TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID env vars if present
